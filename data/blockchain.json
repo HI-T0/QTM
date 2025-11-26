@@ -1,0 +1,411 @@
+{
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1764170623.5740726,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "genesis",
+              "amount": 0
+            }
+          ],
+          "timestamp": 1764170623.5740726,
+          "txid": "613b8c5cff2e2861d7b205a90d5c41f816ebd80e3be888d75b60f6ea0fab1f76"
+        }
+      ],
+      "previous_hash": "0",
+      "nonce": 73525,
+      "hash": "00001c347304b39d4808725443c278cbd65a5856a323f59ab4d1b59e65d61bf7",
+      "merkle_root": "cbf2a95c809f5d99f911d617bb57bf3f9262aa05b9f2e755d2f07163043bb223"
+    },
+    {
+      "index": 1,
+      "timestamp": 1764170627.70588,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170627.70588,
+          "txid": "f2ff2efcef1b28af07fb7ae97f92daa8c4a6046bbd61b6f37eae8688f5e49e9b"
+        }
+      ],
+      "previous_hash": "00001c347304b39d4808725443c278cbd65a5856a323f59ab4d1b59e65d61bf7",
+      "nonce": 57184,
+      "hash": "0000301f8c66c35027fa2e00f62618fa4ea5e44a1d688a5933913fd7a8c947c1",
+      "merkle_root": "f954b0bab61434e90cf63554ae2a0896bbee02193450939e635a5a4d4f206d61"
+    },
+    {
+      "index": 2,
+      "timestamp": 1764170630.62781,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170630.62781,
+          "txid": "ed026c6ca8d4741013557b744825354bdf47c74f62839f1224c88ed482e97284"
+        }
+      ],
+      "previous_hash": "0000301f8c66c35027fa2e00f62618fa4ea5e44a1d688a5933913fd7a8c947c1",
+      "nonce": 176762,
+      "hash": "000030b80374dc0075e5ba3e33da982a0f2351c31e0d6f21392b3fe5bc29ec89",
+      "merkle_root": "6b83d5fee853dba72c89448822187a81c83ba2ab79a995ede4c877931da9ae06"
+    },
+    {
+      "index": 3,
+      "timestamp": 1764170637.623701,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170637.623701,
+          "txid": "e3c377b51f515d7e92ed68fca29ce4fa0a06062d37fd79359d62316737aa5d68"
+        }
+      ],
+      "previous_hash": "000030b80374dc0075e5ba3e33da982a0f2351c31e0d6f21392b3fe5bc29ec89",
+      "nonce": 15423,
+      "hash": "0000f9d754ca0ca3c58820e39cbeb62f2efeb940a55bf47c0af0c0125a748e93",
+      "merkle_root": "bb391398ac126101807e744fd1e07afbdbe3f5db1750ecee8e8875edd3ad4ee2"
+    },
+    {
+      "index": 4,
+      "timestamp": 1764170640.378446,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170640.3779128,
+          "txid": "8f5e41aeae59d5d69c2c7f7f35fe4e57788c4211a1220935c2401bc31b575c6c"
+        }
+      ],
+      "previous_hash": "0000f9d754ca0ca3c58820e39cbeb62f2efeb940a55bf47c0af0c0125a748e93",
+      "nonce": 25388,
+      "hash": "0000a3c69a0502353ce5b84cdaf95edca96748e95cea47f1c13767e61edbcf9d",
+      "merkle_root": "601bad7bd38f0ee240a091b1f2020927a1386a01e1116161aa4d4b073c4ca5e9"
+    },
+    {
+      "index": 5,
+      "timestamp": 1764170642.4845679,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170642.4845679,
+          "txid": "2bd6e732242deef3d3ddb2221be8e8edc5e73db77e188fad96fcdb528368c429"
+        }
+      ],
+      "previous_hash": "0000a3c69a0502353ce5b84cdaf95edca96748e95cea47f1c13767e61edbcf9d",
+      "nonce": 2635,
+      "hash": "0000748ea57174419d5254ccf1e2b420eec51360d6ce55d7095e9dceb10e61a0",
+      "merkle_root": "230aafd3792461130bc34d530472f15c85fbee374dc19b937ae93f921adbc1bf"
+    },
+    {
+      "index": 6,
+      "timestamp": 1764170673.6993544,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1K1dFpPSPnVpFFpEpY3XMRpZTQpqU6yHTW",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170673.6993544,
+          "txid": "b44aefdfb462b8f9bc3fa91b0f0b1eb0e24bcfcc5c8daf4bd0b4372da7160da4"
+        }
+      ],
+      "previous_hash": "0000748ea57174419d5254ccf1e2b420eec51360d6ce55d7095e9dceb10e61a0",
+      "nonce": 43316,
+      "hash": "0000c40609f5b7df3f1ca3ae1ef9f69f11982e9c20d58afed3717b5e7855e43d",
+      "merkle_root": "61c34cc86a7377a3a4f4745ba06bb05d117b76265d10b55424f99ab107a3e2d8"
+    },
+    {
+      "index": 7,
+      "timestamp": 1764170778.17766,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1K1dFpPSPnVpFFpEpY3XMRpZTQpqU6yHTW",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170778.17766,
+          "txid": "929fc988fd1969d31fcb94e4917899222f4d517ae63c7534b30652d42e2a454c"
+        }
+      ],
+      "previous_hash": "0000c40609f5b7df3f1ca3ae1ef9f69f11982e9c20d58afed3717b5e7855e43d",
+      "nonce": 54985,
+      "hash": "0000311e26d08be38423a51fe1f2004752aee2fca07908af5b6b5b8d3f3f84ae",
+      "merkle_root": "fe522cd4931dfaf0e503edbddf79e72cfdc9a2ccac8807ae1063d85c632cfd9a"
+    },
+    {
+      "index": 8,
+      "timestamp": 1764170794.7221692,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170794.7221692,
+          "txid": "6850b9faaa8fb8d206ae5cb5d18a1670afe70707d9299b486ac8f803a623ef74"
+        }
+      ],
+      "previous_hash": "0000311e26d08be38423a51fe1f2004752aee2fca07908af5b6b5b8d3f3f84ae",
+      "nonce": 112283,
+      "hash": "0000b24feb1992742c3d4e4ff043bb4d11d4b498a35d740b9542cf72ceca834d",
+      "merkle_root": "8cdfadb3b77efc4976f75840dc01d3c29b38ed510126e4c03231ffa58a055768"
+    },
+    {
+      "index": 9,
+      "timestamp": 1764170799.2336707,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170799.2336707,
+          "txid": "57f929694233312aa5007b6f8063503e192ee8bcab93666d7953cb3dca3c5eb8"
+        }
+      ],
+      "previous_hash": "0000b24feb1992742c3d4e4ff043bb4d11d4b498a35d740b9542cf72ceca834d",
+      "nonce": 135728,
+      "hash": "0000a3b4175eaf44c297ffb93ebeb692e073197a627efc6778abf1b358bbf3fc",
+      "merkle_root": "b551b1d23b1bc02fa96ae72c103811ca8d4b3ea07db05e265adc75fe99b058a7"
+    },
+    {
+      "index": 10,
+      "timestamp": 1764170825.135115,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764170825.135115,
+          "txid": "338e3f260fb93b22d7099eebda1f4c23390bf87c62f4129c7919578ccec83440"
+        }
+      ],
+      "previous_hash": "0000a3b4175eaf44c297ffb93ebeb692e073197a627efc6778abf1b358bbf3fc",
+      "nonce": 137962,
+      "hash": "0000a3a3ef74fbddbfa33961fea8c81e272f86b29e36fa0fe04cca3f1c8520db",
+      "merkle_root": "b3146b1c61b5f4235e2d06549263a48edeaeb1060227d0cb03fc1386906efd8a"
+    },
+    {
+      "index": 11,
+      "timestamp": 1764179033.257492,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764179033.257492,
+          "txid": "02b3b0f7a6d8145f339f5390dda51568e443567e1c2fa067749c4a66898d6cb3"
+        }
+      ],
+      "previous_hash": "0000a3a3ef74fbddbfa33961fea8c81e272f86b29e36fa0fe04cca3f1c8520db",
+      "nonce": 31883,
+      "hash": "00009ae4c1c82154172e87054d03c8037233129b64eccce224f023bfbbc8c60a",
+      "merkle_root": "748de6de22ef1b2f4c37f5b5cbf63416301258da32f305e44df280de51695d05"
+    },
+    {
+      "index": 12,
+      "timestamp": 1764181207.7812827,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 50
+            }
+          ],
+          "timestamp": 1764181207.7812827,
+          "txid": "4d0e5e3adf63d9dc95225b09827bb5768e855252cdd9a23093943c889fa727b9"
+        }
+      ],
+      "previous_hash": "00009ae4c1c82154172e87054d03c8037233129b64eccce224f023bfbbc8c60a",
+      "nonce": 230481,
+      "hash": "0000e2cb5c3315b365ca51dc8ce271a4278f029a22e0ab778274b2c2da4bb471",
+      "merkle_root": "dd36205b7bb010a4d4828b67f282004ad01ef127588f297a68ebba39e35783fd"
+    },
+    {
+      "index": 13,
+      "timestamp": 1764182879.7384892,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 10.2
+            }
+          ],
+          "timestamp": 1764182879.7379568,
+          "txid": "de3e151836e6392ade60827c576fc5b39027141b59ac7a0f5299a6bd4da10047"
+        }
+      ],
+      "previous_hash": "0000e2cb5c3315b365ca51dc8ce271a4278f029a22e0ab778274b2c2da4bb471",
+      "nonce": 144824,
+      "hash": "000072944ec85e7d6b6b0ea74882ceb9dcc01ebf699cbaafe37d1ddc60d7c518",
+      "merkle_root": "94be6ced4430f81377cece499e8c4165cde40491d61ef641aa50fef648592288"
+    },
+    {
+      "index": 14,
+      "timestamp": 1764184781.0615304,
+      "transactions": [
+        {
+          "inputs": [],
+          "outputs": [
+            {
+              "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+              "amount": 10.2
+            }
+          ],
+          "timestamp": 1764184781.0615304,
+          "txid": "66901b6d419991f4803804e05b8b6e48dfbefc0dd1d6622bcde9f74c891be7b6"
+        }
+      ],
+      "previous_hash": "000072944ec85e7d6b6b0ea74882ceb9dcc01ebf699cbaafe37d1ddc60d7c518",
+      "nonce": 80677,
+      "hash": "0000cb3741ee2fbd3d62b445f5646cf20577b0a4f1144fe1e4232ecbdb579d84",
+      "merkle_root": "1007dbc08cd413dad68b520a2a17105b2b030a200d77a9b101ccaab1e9744a23"
+    }
+  ],
+  "utxo_set": {
+    "613b8c5cff2e2861d7b205a90d5c41f816ebd80e3be888d75b60f6ea0fab1f76": [
+      {
+        "address": "genesis",
+        "amount": 0
+      }
+    ],
+    "f2ff2efcef1b28af07fb7ae97f92daa8c4a6046bbd61b6f37eae8688f5e49e9b": [
+      {
+        "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+        "amount": 50
+      }
+    ],
+    "ed026c6ca8d4741013557b744825354bdf47c74f62839f1224c88ed482e97284": [
+      {
+        "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+        "amount": 50
+      }
+    ],
+    "e3c377b51f515d7e92ed68fca29ce4fa0a06062d37fd79359d62316737aa5d68": [
+      {
+        "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+        "amount": 50
+      }
+    ],
+    "8f5e41aeae59d5d69c2c7f7f35fe4e57788c4211a1220935c2401bc31b575c6c": [
+      {
+        "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+        "amount": 50
+      }
+    ],
+    "2bd6e732242deef3d3ddb2221be8e8edc5e73db77e188fad96fcdb528368c429": [
+      {
+        "address": "13LiY7FPBuodyXAuXcE7MRLJRpaynz98Yd",
+        "amount": 50
+      }
+    ],
+    "b44aefdfb462b8f9bc3fa91b0f0b1eb0e24bcfcc5c8daf4bd0b4372da7160da4": [
+      {
+        "address": "1K1dFpPSPnVpFFpEpY3XMRpZTQpqU6yHTW",
+        "amount": 50
+      }
+    ],
+    "929fc988fd1969d31fcb94e4917899222f4d517ae63c7534b30652d42e2a454c": [
+      {
+        "address": "1K1dFpPSPnVpFFpEpY3XMRpZTQpqU6yHTW",
+        "amount": 50
+      }
+    ],
+    "6850b9faaa8fb8d206ae5cb5d18a1670afe70707d9299b486ac8f803a623ef74": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 50
+      }
+    ],
+    "57f929694233312aa5007b6f8063503e192ee8bcab93666d7953cb3dca3c5eb8": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 50
+      }
+    ],
+    "338e3f260fb93b22d7099eebda1f4c23390bf87c62f4129c7919578ccec83440": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 50
+      }
+    ],
+    "02b3b0f7a6d8145f339f5390dda51568e443567e1c2fa067749c4a66898d6cb3": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 50
+      }
+    ],
+    "4d0e5e3adf63d9dc95225b09827bb5768e855252cdd9a23093943c889fa727b9": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 50
+      }
+    ],
+    "de3e151836e6392ade60827c576fc5b39027141b59ac7a0f5299a6bd4da10047": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 10.2
+      }
+    ],
+    "66901b6d419991f4803804e05b8b6e48dfbefc0dd1d6622bcde9f74c891be7b6": [
+      {
+        "address": "1FnzawFA3WGeeoZaF2TBu7u8brCLaDDAcq",
+        "amount": 10.2
+      }
+    ]
+  }
+}
