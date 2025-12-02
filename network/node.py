@@ -21,6 +21,7 @@ class P2PNode:
         self.lock = threading.Lock()
         self.seen_blocks: Set[str] = set()
         self.seen_transactions: Set[str] = set()
+        self.api_running = False
         print(f"Node initialized at {self.host}:{self.port}")
     
     def start(self):
@@ -381,17 +382,18 @@ Peers: {[str(p) for p in self.peers]}
     def start_api(self, api_port: int = None):
         """
         Start a lightweight HTTP JSON API for the node.
-        Defaults to node.port + 1000 if no api_port provided.
+        Defaults to 8545 if no api_port provided.
         Endpoints:
-          GET /balance?address=...
-          GET /status
-          GET /chain
-          GET /peers
-          POST /mine  (JSON {"address": "<miner_address>"})
-          POST /tx    (raw transaction JSON; keys: inputs, outputs, timestamp, txid optional)
+          GET  /api/blockchain       - All blocks
+          GET  /api/block/<height>   - Specific block
+          GET  /api/wallet-info?address=...  - Wallet info & balance
+          GET  /api/network-stats    - Network difficulty & stats
+          POST /api/send             - Send transaction (JSON: {from, to, amount})
+          GET  /balance?address=...  - Legacy balance endpoint
+          GET  /chain                - Legacy chain endpoint
         """
         if api_port is None:
-            api_port = self.port + 1000
+            api_port = 8545
 
         import http.server
         import socketserver
@@ -405,22 +407,79 @@ Peers: {[str(p) for p in self.peers]}
                 data = json.dumps(obj).encode('utf-8')
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
 
             def do_GET(self):
                 parsed = urlparse(self.path)
-                if parsed.path == "/balance":
-                    q = parse_qs(parsed.query)
+                path = parsed.path
+                q = parse_qs(parsed.query)
+
+                # New API endpoints
+                if path == "/api/blockchain":
+                    chain_data = []
+                    for block in node.blockchain.chain:
+                        chain_data.append({
+                            'index': block.index,
+                            'timestamp': block.timestamp,
+                            'transactions': len(block.transactions),
+                            'hash': block.hash,
+                            'previous_hash': block.previous_hash,
+                            'nonce': block.nonce,
+                            'merkle_root': block.merkle_root
+                        })
+                    return self._send_json(200, {"blocks": chain_data, "length": len(chain_data)})
+
+                elif path.startswith("/api/block/"):
+                    try:
+                        height = int(path.split("/")[-1])
+                        if height < 0 or height >= len(node.blockchain.chain):
+                            return self._send_json(404, {"error": "block not found"})
+                        block = node.blockchain.chain[height]
+                        return self._send_json(200, {
+                            'index': block.index,
+                            'timestamp': block.timestamp,
+                            'transactions': [tx.to_dict() for tx in block.transactions],
+                            'hash': block.hash,
+                            'previous_hash': block.previous_hash,
+                            'nonce': block.nonce,
+                            'merkle_root': block.merkle_root
+                        })
+                    except Exception as e:
+                        return self._send_json(400, {"error": str(e)})
+
+                elif path == "/api/wallet-info":
+                    addr = q.get('address', [None])[0]
+                    if not addr:
+                        return self._send_json(400, {"error": "address required"})
+                    bal = node.blockchain.get_balance(addr)
+                    return self._send_json(200, {
+                        "address": addr,
+                        "balance": bal,
+                        "currency": "Quantum"
+                    })
+
+                elif path == "/api/network-stats":
+                    return self._send_json(200, {
+                        "difficulty": node.blockchain.difficulty,
+                        "base_difficulty": node.blockchain.base_difficulty,
+                        "chain_length": len(node.blockchain.chain),
+                        "pending_transactions": len(node.blockchain.pending_transactions),
+                        "connected_peers": len(node.peers),
+                        "mining_reward": node.blockchain.mining_reward
+                    })
+
+                # Legacy endpoints
+                elif path == "/balance":
                     addr = q.get('address', [None])[0]
                     if not addr:
                         return self._send_json(400, {"error": "address required"})
                     bal = node.blockchain.get_balance(addr)
                     return self._send_json(200, {"address": addr, "balance": bal})
-                elif parsed.path == "/status":
-                    return self._send_json(200, {"status": node.get_status()})
-                elif parsed.path == "/chain":
+
+                elif path == "/chain":
                     chain_data = []
                     for block in node.blockchain.chain:
                         chain_data.append({
@@ -433,13 +492,19 @@ Peers: {[str(p) for p in self.peers]}
                             'merkle_root': block.merkle_root
                         })
                     return self._send_json(200, {"chain": chain_data})
-                elif parsed.path == "/peers":
+
+                elif path == "/status":
+                    return self._send_json(200, {"status": node.get_status()})
+
+                elif path == "/peers":
                     return self._send_json(200, {"peers": [{'host': p.host, 'port': p.port} for p in node.peers]})
+
                 else:
                     self._send_json(404, {"error": "unknown endpoint"})
 
             def do_POST(self):
                 parsed = urlparse(self.path)
+                path = parsed.path
                 length = int(self.headers.get('Content-Length', 0))
                 body = self.rfile.read(length) if length else b''
                 try:
@@ -447,15 +512,25 @@ Peers: {[str(p) for p in self.peers]}
                 except Exception:
                     return self._send_json(400, {"error": "invalid JSON"})
 
-                if parsed.path == "/mine":
-                    miner = payload.get('address')
-                    if not miner:
-                        return self._send_json(400, {"error": "address required"})
-                    # mine synchronously (simple)
-                    node.mine_and_broadcast(miner)
-                    return self._send_json(200, {"result": "mined", "latest_hash": node.blockchain.get_latest_block().hash})
-                elif parsed.path == "/tx":
-                    # accept a transaction object and add it
+                if path == "/api/send":
+                    # Simple transaction send endpoint
+                    from_addr = payload.get('from')
+                    to_addr = payload.get('to')
+                    amount = payload.get('amount')
+                    if not from_addr or not to_addr or amount is None:
+                        return self._send_json(400, {"error": "from, to, amount required"})
+                    # For now, just accept and queue (no wallet signing here)
+                    tx = Transaction(
+                        inputs=[],
+                        outputs=[{'address': to_addr, 'amount': amount}],
+                        timestamp=time.time()
+                    )
+                    with node.lock:
+                        node.blockchain.add_transaction(tx)
+                    node.broadcast_transaction(tx)
+                    return self._send_json(200, {"result": "transaction queued", "txid": tx.txid})
+
+                elif path == "/tx":
                     tx_data = payload
                     try:
                         tx = Transaction(
@@ -472,20 +547,106 @@ Peers: {[str(p) for p in self.peers]}
                         return self._send_json(200, {"result": "tx accepted", "txid": tx.txid})
                     except Exception as e:
                         return self._send_json(400, {"error": f"invalid transaction: {e}"})
+
                 else:
                     self._send_json(404, {"error": "unknown endpoint"})
 
-            # silence logs
+            def do_OPTIONS(self):
+                self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.end_headers()
+
             def log_message(self, format, *args):
                 return
 
         def serve():
-            with socketserver.TCPServer(("0.0.0.0", api_port), Handler) as httpd:
-                print(f"API listening on 0.0.0.0:{api_port}")
-                try:
+            try:
+                with socketserver.TCPServer(("0.0.0.0", api_port), Handler) as httpd:
+                    print(f"\n{'='*60}")
+                    print(f"API running at http://localhost:{api_port}")
+                    print(f"{'='*60}")
+                    print(f"Endpoints:")
+                    print(f"  GET  http://localhost:{api_port}/api/blockchain")
+                    print(f"  GET  http://localhost:{api_port}/api/block/<height>")
+                    print(f"  GET  http://localhost:{api_port}/api/wallet-info?address=<addr>")
+                    print(f"  GET  http://localhost:{api_port}/api/network-stats")
+                    print(f"  POST http://localhost:{api_port}/api/send")
+                    print(f"{'='*60}\n")
+                    node.api_running = True
                     httpd.serve_forever()
-                except Exception:
-                    pass
+            except Exception as e:
+                print(f"API error: {e}")
 
         t = threading.Thread(target=serve, daemon=True)
         t.start()
+        time.sleep(0.5)  # give server time to start
+
+    def broadcast_block(self, block: Block):
+        """Broadcast a new block to all peers"""
+        block_dict = {
+            'index': block.index,
+            'timestamp': block.timestamp,
+            'transactions': [tx.to_dict() for tx in block.transactions],
+            'previous_hash': block.previous_hash,
+            'nonce': block.nonce,
+            'hash': block.hash,
+            'merkle_root': block.merkle_root
+        }
+        
+        self.seen_blocks.add(block.hash)
+        message = Message(Message.NEW_BLOCK, block_dict)
+        
+        for peer in list(self.peers):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((peer.host, peer.port))
+                self._send_message(sock, message)
+                sock.close()
+            except Exception as e:
+                print(f"Error broadcasting block to {peer}: {e}")
+    
+    def broadcast_transaction(self, tx: Transaction):
+        """Broadcast a new transaction to all peers"""
+        self.seen_transactions.add(tx.txid)
+        message = Message(Message.NEW_TRANSACTION, tx.to_dict())
+        
+        for peer in list(self.peers):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((peer.host, peer.port))
+                self._send_message(sock, message)
+                sock.close()
+            except Exception as e:
+                print(f"Error broadcasting transaction to {peer}: {e}")
+    
+    def mine_and_broadcast(self, mining_address: str):
+        """Mine a block and broadcast it to network"""
+        print(f"\n{'='*60}")
+        print(f"MINING PROCESS STARTED")
+        print(f"{'='*60}")
+        self.blockchain.mine_pending_transactions(mining_address)
+        # persist already handled inside blockchain.mine_pending_transactions but ensure saved
+        try:
+            self.blockchain.save_to_file()
+        except Exception:
+            pass
+        latest_block = self.blockchain.get_latest_block()
+        print(f"\nBroadcasting block to {len(self.peers)} peers...")
+        self.broadcast_block(latest_block)
+        print(f"✓ Block broadcast complete")
+        print(f"{'='*60}\n")
+    
+    def get_status(self) -> str:
+        """Get node status"""
+        return f"""
+Node Status:
+-----------
+Address: {self.host}:{self.port}
+Running: {self.running}
+Connected Peers: {len(self.peers)}
+Blockchain Length: {len(self.blockchain.chain)}
+Pending Transactions: {len(self.blockchain.pending_transactions)}
+Peers: {[str(p) for p in self.peers]}
+"""
