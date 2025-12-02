@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-import json  # <-- ADD THIS
+import json
 from typing import Set, List, Dict
 from core.blockchain import Blockchain
 from core.block import Block
@@ -49,7 +49,6 @@ class P2PNode:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
-        # persist blockchain on shutdown
         try:
             self.blockchain.save_to_file()
         except Exception:
@@ -78,16 +77,13 @@ class P2PNode:
             while self.running:
                 data = client_socket.recv(65536)
                 
-                # If no data received, peer closed connection
                 if not data:
                     print(f"Peer {address} closed connection")
                     break
                 
-                # Attempt to decode message
                 try:
                     data_str = data.decode('utf-8', errors='ignore').strip()
                     
-                    # Skip empty messages (connection drop, noise, etc.)
                     if not data_str:
                         print(f"[DEBUG] Empty message from {address}, skipping")
                         continue
@@ -95,7 +91,6 @@ class P2PNode:
                     message = Message.from_json(data_str)
                     print(f"Received {message.type} from {address}")
                     
-                    # Route message to handler
                     if message.type == Message.REQUEST_CHAIN:
                         self._send_chain(client_socket)
                     elif message.type == Message.SEND_CHAIN:
@@ -114,14 +109,11 @@ class P2PNode:
                         print(f"[DEBUG] Unknown message type: {message.type}")
                 
                 except json.JSONDecodeError as e:
-                    # Invalid JSON - likely not a P2P peer (HTTP, port scanner, etc.)
                     print(f"[DEBUG] Invalid JSON from {address}: {str(e)[:50]}...")
-                    break  # Close connection with non-P2P client
+                    break
                 
                 except Exception as e:
-                    # Other decode/processing errors
                     print(f"[DEBUG] Error processing message from {address}: {str(e)[:50]}...")
-                    # Don't break - try next message in case it's temporary
                     continue
         
         except Exception as e:
@@ -236,7 +228,6 @@ class P2PNode:
                     self.blockchain.utxo_set = {}
                     for block in self.blockchain.chain:
                         self.blockchain.update_utxo_set(block)
-                # persist after accepting new chain
                 try:
                     self.blockchain.save_to_file()
                 except Exception:
@@ -274,7 +265,6 @@ class P2PNode:
                 merkle_root=block_data['merkle_root']
             )
 
-            # Timestamp validation: reject blocks with invalid timestamps
             if not self.blockchain.is_block_timestamp_valid(block):
                 print(f"Rejected block {block.hash} due to invalid timestamp")
                 return
@@ -287,7 +277,6 @@ class P2PNode:
                     self.blockchain.chain.append(block)
                     self.blockchain.update_utxo_set(block)
                     self.blockchain.pending_transactions = []
-                    # persist after adding block
                     try:
                         self.blockchain.save_to_file()
                     except Exception:
@@ -388,7 +377,6 @@ class P2PNode:
         print(f"MINING PROCESS STARTED")
         print(f"{'='*60}")
         self.blockchain.mine_pending_transactions(mining_address)
-        # persist already handled inside blockchain.mine_pending_transactions but ensure saved
         try:
             self.blockchain.save_to_file()
         except Exception:
@@ -416,24 +404,15 @@ Peers: {[str(p) for p in self.peers]}
         """
         Start a lightweight HTTP JSON API for the node.
         Defaults to 8545 if no api_port provided.
-        Endpoints:
-          GET  /api/blockchain       - All blocks
-          GET  /api/block/<height>   - Specific block
-          GET  /api/wallet-info?address=...  - Wallet info & balance
-          GET  /api/network-stats    - Network difficulty & stats
-          POST /api/send             - Send transaction (JSON: {from, to, amount})
-          GET  /balance?address=...  - Legacy balance endpoint
-          GET  /chain                - Legacy chain endpoint
         """
         if api_port is None:
             api_port = 8545
 
         import http.server
         import socketserver
-        import json
         from urllib.parse import urlparse, parse_qs
 
-        node = self  # capture
+        node = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
             def _send_json(self, code, obj):
@@ -450,7 +429,6 @@ Peers: {[str(p) for p in self.peers]}
                 path = parsed.path
                 q = parse_qs(parsed.query)
 
-                # New API endpoints
                 if path == "/api/blockchain":
                     chain_data = []
                     for block in node.blockchain.chain:
@@ -488,11 +466,7 @@ Peers: {[str(p) for p in self.peers]}
                     if not addr:
                         return self._send_json(400, {"error": "address required"})
                     bal = node.blockchain.get_balance(addr)
-                    return self._send_json(200, {
-                        "address": addr,
-                        "balance": bal,
-                        "currency": "Quantum"
-                    })
+                    return self._send_json(200, {"address": addr, "balance": bal, "currency": "Quantum"})
 
                 elif path == "/api/network-stats":
                     return self._send_json(200, {
@@ -504,7 +478,6 @@ Peers: {[str(p) for p in self.peers]}
                         "mining_reward": node.blockchain.mining_reward
                     })
 
-                # Legacy endpoints
                 elif path == "/balance":
                     addr = q.get('address', [None])[0]
                     if not addr:
@@ -546,13 +519,11 @@ Peers: {[str(p) for p in self.peers]}
                     return self._send_json(400, {"error": "invalid JSON"})
 
                 if path == "/api/send":
-                    # Simple transaction send endpoint
                     from_addr = payload.get('from')
                     to_addr = payload.get('to')
                     amount = payload.get('amount')
                     if not from_addr or not to_addr or amount is None:
                         return self._send_json(400, {"error": "from, to, amount required"})
-                    # For now, just accept and queue (no wallet signing here)
                     tx = Transaction(
                         inputs=[],
                         outputs=[{'address': to_addr, 'amount': amount}],
@@ -562,24 +533,6 @@ Peers: {[str(p) for p in self.peers]}
                         node.blockchain.add_transaction(tx)
                     node.broadcast_transaction(tx)
                     return self._send_json(200, {"result": "transaction queued", "txid": tx.txid})
-
-                elif path == "/tx":
-                    tx_data = payload
-                    try:
-                        tx = Transaction(
-                            inputs=tx_data.get('inputs', []),
-                            outputs=tx_data.get('outputs', []),
-                            timestamp=tx_data.get('timestamp', time.time()),
-                            txid=tx_data.get('txid')
-                        )
-                        with node.lock:
-                            added = node.blockchain.add_transaction(tx)
-                        if not added:
-                            return self._send_json(400, {"error": "transaction rejected"})
-                        node.broadcast_transaction(tx)
-                        return self._send_json(200, {"result": "tx accepted", "txid": tx.txid})
-                    except Exception as e:
-                        return self._send_json(400, {"error": f"invalid transaction: {e}"})
 
                 else:
                     self._send_json(404, {"error": "unknown endpoint"})
@@ -599,13 +552,6 @@ Peers: {[str(p) for p in self.peers]}
                 with socketserver.TCPServer(("0.0.0.0", api_port), Handler) as httpd:
                     print(f"\n{'='*60}")
                     print(f"API running at http://localhost:{api_port}")
-                    print(f"{'='*60}")
-                    print(f"Endpoints:")
-                    print(f"  GET  http://localhost:{api_port}/api/blockchain")
-                    print(f"  GET  http://localhost:{api_port}/api/block/<height>")
-                    print(f"  GET  http://localhost:{api_port}/api/wallet-info?address=<addr>")
-                    print(f"  GET  http://localhost:{api_port}/api/network-stats")
-                    print(f"  POST http://localhost:{api_port}/api/send")
                     print(f"{'='*60}\n")
                     node.api_running = True
                     httpd.serve_forever()
@@ -614,72 +560,5 @@ Peers: {[str(p) for p in self.peers]}
 
         t = threading.Thread(target=serve, daemon=True)
         t.start()
-        time.sleep(0.5)  # give server time to start
-
-    def broadcast_block(self, block: Block):
-        """Broadcast a new block to all peers"""
-        block_dict = {
-            'index': block.index,
-            'timestamp': block.timestamp,
-            'transactions': [tx.to_dict() for tx in block.transactions],
-            'previous_hash': block.previous_hash,
-            'nonce': block.nonce,
-            'hash': block.hash,
-            'merkle_root': block.merkle_root
-        print(f"{'='*60}")
-        self.blockchain.mine_pending_transactions(mining_address)
-        # persist already handled inside blockchain.mine_pending_transactions but ensure savedage = Message(Message.NEW_BLOCK, block_dict)
-        try:
-            self.blockchain.save_to_file()self.peers):
-        except Exception:
-            passet.SOCK_STREAM)
-        latest_block = self.blockchain.get_latest_block()
-        print(f"\nBroadcasting block to {len(self.peers)} peers...")essage)
-        self.broadcast_block(latest_block)
-        print(f"✓ Block broadcast complete") as e:
-        print(f"{'='*60}\n")            print(f"Error broadcasting block to {peer}: {e}")
-    
-    def get_status(self) -> str:(self, tx: Transaction):
-        """Get node status"""t a new transaction to all peers"""
-        return f""".seen_transactions.add(tx.txid)
-Node Status:sage = Message(Message.NEW_TRANSACTION, tx.to_dict())
------------
-Address: {self.host}:{self.port}t(self.peers):
-Running: {self.running}
-Connected Peers: {len(self.peers)}INET, socket.SOCK_STREAM)
-Blockchain Length: {len(self.blockchain.chain)}
-Pending Transactions: {len(self.blockchain.pending_transactions)}ck, message)
-Peers: {[str(p) for p in self.peers]}             sock.close()
-
-"""            except Exception as e:
-                print(f"Error broadcasting transaction to {peer}: {e}")
-    
-    def mine_and_broadcast(self, mining_address: str):
-        """Mine a block and broadcast it to network"""
-        print(f"\n{'='*60}")
-        print(f"MINING PROCESS STARTED")
-        print(f"{'='*60}")
-        self.blockchain.mine_pending_transactions(mining_address)
-        # persist already handled inside blockchain.mine_pending_transactions but ensure saved
-        try:
-            self.blockchain.save_to_file()
-        except Exception:
-            pass
-        latest_block = self.blockchain.get_latest_block()
-        print(f"\nBroadcasting block to {len(self.peers)} peers...")
-        self.broadcast_block(latest_block)
-        print(f"✓ Block broadcast complete")
-        print(f"{'='*60}\n")
-    
-    def get_status(self) -> str:
-        """Get node status"""
-        return f"""
-Node Status:
------------
-Address: {self.host}:{self.port}
-Running: {self.running}
-Connected Peers: {len(self.peers)}
-Blockchain Length: {len(self.blockchain.chain)}
-Pending Transactions: {len(self.blockchain.pending_transactions)}
-Peers: {[str(p) for p in self.peers]}
-"""
+        time.sleep(0.5)
+        
