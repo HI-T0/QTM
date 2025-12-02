@@ -7,6 +7,20 @@ from flask_cors import CORS
 from core.blockchain import Blockchain
 from network.node import P2PNode
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Set environment variables for Render
+if 'RENDER' in os.environ:
+    # Render-specific settings
+    os.environ['STORAGE_PATH'] = '/tmp/blockchain_data'
+else:
+    # Local development
+    os.environ['STORAGE_PATH'] = './blockchain_data'
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
