@@ -81,14 +81,29 @@ class P2PNode:
                     print(f"Peer {address} closed connection")
                     break
                 
+                # Decode and strip first, before any JSON parsing
                 try:
                     data_str = data.decode('utf-8', errors='ignore').strip()
-                    
-                    if not data_str:
-                        print(f"[DEBUG] Empty message from {address}, skipping")
-                        continue
-                    
+                except Exception as e:
+                    print(f"[DEBUG] Decode error from {address}: {str(e)[:50]}...")
+                    break
+                
+                # Skip empty messages early (before JSON parse attempt)
+                if not data_str:
+                    continue
+                
+                # Now attempt JSON parsing
+                try:
                     message = Message.from_json(data_str)
+                except json.JSONDecodeError as e:
+                    print(f"[DEBUG] Invalid JSON from {address}: {str(e)[:50]}...")
+                    break
+                except Exception as e:
+                    print(f"[DEBUG] Message parse error from {address}: {str(e)[:50]}...")
+                    break
+                
+                # If we got here, message is valid—process it
+                try:
                     print(f"Received {message.type} from {address}")
                     
                     if message.type == Message.REQUEST_CHAIN:
@@ -108,12 +123,9 @@ class P2PNode:
                     else:
                         print(f"[DEBUG] Unknown message type: {message.type}")
                 
-                except json.JSONDecodeError as e:
-                    print(f"[DEBUG] Invalid JSON from {address}: {str(e)[:50]}...")
-                    break
-                
                 except Exception as e:
-                    print(f"[DEBUG] Error processing message from {address}: {str(e)[:50]}...")
+                    print(f"[DEBUG] Error processing {message.type} from {address}: {str(e)[:50]}...")
+                    # Don't break on handler errors—continue listening
                     continue
         
         except Exception as e:
@@ -561,4 +573,3 @@ Peers: {[str(p) for p in self.peers]}
         t = threading.Thread(target=serve, daemon=True)
         t.start()
         time.sleep(0.5)
-        
