@@ -2,13 +2,13 @@ import time
 import os
 import json
 import statistics
-from typing import List, Dict, Optional, Tuple  # added Tuple, Optional
+from typing import List, Dict, Optional, Tuple
 from core.block import Block
 from core.transaction import Transaction
 
 class Blockchain:
     """Main blockchain class"""
-    def __init__(self, difficulty: int = 5, storage_path: str = "c:\\Users\\Hemer\\Desktop\\coin\\data\\blockchain.json", difficulty_interval: int = 10):
+    def __init__(self, difficulty: int = 5, storage_path: str = None, difficulty_interval: int = 10):
         # difficulty parameter kept for backward-compatibility and is treated as base difficulty
         self.chain: List[Block] = []
         self.base_difficulty = difficulty  # base difficulty (will be adjusted as chain grows)
@@ -16,11 +16,27 @@ class Blockchain:
         self.pending_transactions: List[Transaction] = []
         self.mining_reward = 10.2  # Quantum reward per block
         self.utxo_set: Dict[str, List[Dict]] = {}
-        self.storage_path = storage_path
         self.mining_cancel = False  # flag to cancel mining
 
-        # ensure data directory exists
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+        # Determine storage_path safely
+        if storage_path is None:
+            storage_dir = os.environ.get('STORAGE_PATH', './data')
+            self.storage_path = os.path.join(storage_dir, 'blockchain.json')
+        else:
+            self.storage_path = storage_path
+
+        print(f"Blockchain storage path: {self.storage_path}")
+
+        # FIXED: Safe directory creation
+        try:
+            dir_path = os.path.dirname(self.storage_path)
+            if dir_path and dir_path.strip():
+                os.makedirs(dir_path, exist_ok=True)
+                print(f"Created directory: {dir_path}")
+            else:
+                print("Note: No directory to create (using current directory)")
+        except Exception as e:
+            print(f"Warning: Directory creation failed: {e}")
 
         # load existing chain if present, otherwise create genesis and save
         if os.path.exists(self.storage_path):
