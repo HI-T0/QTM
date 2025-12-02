@@ -6,14 +6,21 @@ import base58
 
 class Wallet:
     """Bitcoin-style wallet with ECDSA keys and on-disk persistence"""
-    def __init__(self, storage_path: str = None):
-        # default storage location
-        if storage_path is None:
-            storage_path = r"c:\Users\Hemer\Desktop\coin\data\wallet.json"
+    def __init__(self, storage_path: str = 'wallet.json'):
+        # accept a simple filename by default; if no directory is present
+        # use Render's temp path so deployments are safe.
         self.storage_path = storage_path
 
-        # ensure directory exists
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+        # If no directory component provided (e.g. "wallet.json"), use /tmp on Render
+        dir_path = os.path.dirname(self.storage_path)
+        if not dir_path:
+            # Use Render's temp directory as default for deployments
+            self.storage_path = '/tmp/wallet.json'
+            dir_path = os.path.dirname(self.storage_path)
+
+        # Create directory only when there's a directory component
+        if dir_path and dir_path.strip():
+            os.makedirs(dir_path, exist_ok=True)
 
         # try to load existing keys, otherwise generate and save
         if os.path.exists(self.storage_path):
@@ -94,3 +101,4 @@ class Wallet:
         self.address = self.generate_address()
         if save:
             self._save_to_file()
+
