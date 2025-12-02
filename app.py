@@ -1,46 +1,47 @@
 import os
-import time
+import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-# Determine storage path
+# Determine storage path based on environment
 if 'RENDER' in os.environ:
-    # Render - use /tmp/blockchain.json
     storage_path = '/tmp/blockchain.json'
 else:
-    # Local - use ./data/blockchain.json
     storage_path = './data/blockchain.json'
 
 print(f"Storage path: {storage_path}")
 
-# Now import blockchain and p2p node (import after determining path)
+# Import after path is set
 from core.blockchain import Blockchain
+from core.wallet import Wallet
 from network.node import P2PNode
-from core.transaction import Transaction
 
 # Create Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Initialize blockchain WITH explicit path
+# Initialize blockchain and node
 blockchain = Blockchain(storage_path=storage_path)
-
-# Initialize P2P node
+wallet = Wallet()
 node = P2PNode("0.0.0.0", 5000, blockchain)
-
-# Start P2P node in background
 node.start()
+
+print(f"Wallet Address: {wallet.address}")
+
+# ============ API ENDPOINTS ============
 
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({
         "name": "Quantum Blockchain API",
         "version": "1.0.0",
-        "status": "running"
+        "wallet": wallet.address,
+        "status": "online"
     }), 200
 
 @app.route('/api/blockchain', methods=['GET'])
-def get_blockchain():
+def api_blockchain():
+    """Get entire blockchain"""
     chain_data = []
     for block in blockchain.chain:
         chain_data.append({
@@ -54,8 +55,54 @@ def get_blockchain():
         })
     return jsonify({"blocks": chain_data, "length": len(chain_data)}), 200
 
+@app.route('/api/latest-blocks', methods=['GET'])
+def api_latest_blocks():
+    """Get last N blocks (default 5)"""
+    try:
+        limit = int(request.args.get('limit', 5))
+        limit = max(1, min(limit, 100))
+    except (ValueError, TypeError):
+        limit = 5
+    
+    start_idx = max(0, len(blockchain.chain) - limit)
+    chain_data = []
+    for block in blockchain.chain[start_idx:]:
+        chain_data.append({
+            'index': block.index,
+            'hash': block.hash[:20] + '...',
+            'timestamp': block.timestamp,
+            'transactions': len(block.transactions)
+        })
+    return jsonify(chain_data), 200
+
+@app.route('/api/wallet-info', methods=['GET'])
+def api_wallet_info():
+    """Get wallet info and balance"""
+    balance = blockchain.get_balance(wallet.address)
+    return jsonify({
+        'address': wallet.address,
+        'balance': balance,
+        'status': 'online',
+        'currency': 'Quantum'
+    }), 200
+
+@app.route('/api/network-stats', methods=['GET'])
+def api_network_stats():
+    """Get network statistics"""
+    return jsonify({
+        'difficulty': blockchain.difficulty,
+        'base_difficulty': blockchain.base_difficulty,
+        'total_blocks': len(blockchain.chain),
+        'total_transactions': sum(len(b.transactions) for b in blockchain.chain),
+        'pending_transactions': len(blockchain.pending_transactions),
+        'connected_peers': len(node.peers),
+        'mining_reward': blockchain.mining_reward,
+        'status': 'active'
+    }), 200
+
 @app.route('/api/block/<int:height>', methods=['GET'])
-def get_block(height):
+def api_get_block(height):
+    """Get specific block by height"""
     if height < 0 or height >= len(blockchain.chain):
         return jsonify({"error": "block not found"}), 404
     block = blockchain.chain[height]
@@ -69,45 +116,14 @@ def get_block(height):
         'merkle_root': block.merkle_root
     }), 200
 
-@app.route('/api/wallet-info', methods=['GET'])
-def get_wallet_info():
-    address = request.args.get('address')
-    if not address:
-        return jsonify({"error": "address required"}), 400
-    balance = blockchain.get_balance(address)
-    return jsonify({"address": address, "balance": balance, "currency": "Quantum"}), 200
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "endpoint not found"}), 404
 
-@app.route('/api/network-stats', methods=['GET'])
-def get_network_stats():
-    return jsonify({
-        "difficulty": blockchain.difficulty,
-        "base_difficulty": blockchain.base_difficulty,
-        "chain_length": len(blockchain.chain),
-        "pending_transactions": len(blockchain.pending_transactions),
-        "connected_peers": len(node.peers),
-        "mining_reward": blockchain.mining_reward
-    }), 200
+@app.errorhandler(500)
+def server_error(error):
+    return jsonify({"error": "internal server error"}), 500
 
-@app.route('/api/send', methods=['POST'])
-def api_send():
-    data = request.get_json() or {}
-    from_addr = data.get('from')
-    to_addr = data.get('to')
-    amount = data.get('amount')
-    if not from_addr or not to_addr or amount is None:
-        return jsonify({"error": "from, to, amount required"}), 400
-    # Create simple tx (unsigned) and queue it
-    tx = Transaction(inputs=[], outputs=[{'address': to_addr, 'amount': amount}], timestamp=time.time())
-    with node.lock:
-        blockchain.add_transaction(tx)
-    node.broadcast_transaction(tx)
-    return jsonify({"result": "transaction queued", "txid": tx.txid}), 200
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy", "chain_length": len(blockchain.chain)}), 200
-
-# When running directly (or by gunicorn pointing to app:app), honor PORT env var
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8545))
     app.run(host="0.0.0.0", port=port, debug=False)
