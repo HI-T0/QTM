@@ -185,9 +185,14 @@ mining_thread.start()
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    data = request.get_json() or {}
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({"error": "invalid JSON body"}), 400
+    
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    
     if not username or not password:
         return jsonify({"error": "username and password required"}), 400
     if username in users:
@@ -211,9 +216,14 @@ def api_register():
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.get_json() or {}
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({"error": "invalid JSON body"}), 400
+    
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    
     if not username or not password:
         return jsonify({"error": "username and password required"}), 400
     user = users.get(username)
@@ -324,11 +334,15 @@ def api_get_block(height):
 
 @app.route('/api/send', methods=['POST'])
 def api_send():
-    # Require authentication to send from user's wallet (auto sign)
     username = get_authenticated_username()
-    data = request.get_json() or {}
-    to_addr = data.get('to')
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({"error": "invalid JSON body"}), 400
+    
+    to_addr = data.get('to', '').strip()
     amount = data.get('amount')
+    
     if not to_addr or amount is None:
         return jsonify({"error": "to and amount required"}), 400
 
@@ -362,8 +376,12 @@ def api_info():
 @app.route('/api/mining/start', methods=['POST'])
 def start_mining():
 	"""User joins mining pool"""
-	data = request.get_json() or {}
-	address = data.get('address')
+	try:
+		data = request.get_json(silent=True) or {}
+	except Exception:
+		return jsonify({"error": "invalid JSON body"}), 400
+	
+	address = data.get('address', '').strip()
 	if not address:
 		return jsonify({"error": "address required"}), 400
 	
@@ -385,8 +403,12 @@ def start_mining():
 @app.route('/api/mining/stop', methods=['POST'])
 def stop_mining():
 	"""User leaves mining pool"""
-	data = request.get_json() or {}
-	address = data.get('address')
+	try:
+		data = request.get_json(silent=True) or {}
+	except Exception:
+		return jsonify({"error": "invalid JSON body"}), 400
+	
+	address = data.get('address', '').strip()
 	if not address:
 		return jsonify({"error": "address required"}), 400
 	
@@ -402,8 +424,12 @@ def stop_mining():
 @app.route('/api/mining/submit-work', methods=['POST'])
 def submit_work():
 	"""User submits browser mining proof"""
-	data = request.get_json() or {}
-	address = data.get('address')
+	try:
+		data = request.get_json(silent=True) or {}
+	except Exception:
+		return jsonify({"error": "invalid JSON body"}), 400
+	
+	address = data.get('address', '').strip()
 	solution = data.get('solution')
 	if not address or not solution:
 		return jsonify({"error": "address and solution required"}), 400
@@ -510,9 +536,12 @@ def api_pool_info_compat():
 
 @app.route('/api/mining-start', methods=['POST'])
 def api_mining_start_compat():
-    # same behavior as /api/mining/start but with legacy path
-    data = request.get_json() or {}
-    address = data.get('address')
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({"error": "invalid JSON body"}), 400
+    
+    address = data.get('address', '').strip()
     if not address:
         return jsonify({"error": "address required"}), 400
 
@@ -531,14 +560,29 @@ def api_mining_start_compat():
         'estimated_reward': f"{blockchain.mining_reward} Quantum/block"
     }), 200
 
-# Error handlers
+# ============ Error handlers ============
 @app.errorhandler(404)
 def not_found(err):
     return jsonify({"error": "endpoint not found"}), 404
 
+@app.errorhandler(415)
+def unsupported_media_type(err):
+    return jsonify({"error": "unsupported media type (use Content-Type: application/json)"}), 415
+
 @app.errorhandler(500)
 def server_error(err):
     return jsonify({"error": "internal server error"}), 500
+
+# Add global request validation for JSON POST/PUT requests
+@app.before_request
+def validate_json_request():
+    """Ensure POST/PUT requests have proper Content-Type"""
+    if request.method in ('POST', 'PUT'):
+        # Allow empty body (some POST endpoints may not need it)
+        if request.content_length and request.content_length > 0:
+            # If body exists, require JSON content-type
+            if not request.is_json:
+                return jsonify({"error": "Content-Type must be application/json"}), 415
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8545))
