@@ -3,6 +3,7 @@ import json
 import time
 import uuid
 import hashlib
+import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -74,6 +75,84 @@ blockchain = Blockchain(storage_path=storage_path)
 
 node = P2PNode("0.0.0.0", 5000, blockchain)
 node.start()
+
+# ============ Mining Pool System ============
+
+mining_pool = {}  # address -> {'shares': int, 'last_active': float, 'hashrate': int}
+mining_lock = threading.Lock()
+mining_active = False
+
+def verify_light_puzzle(solution: dict) -> bool:
+	"""Verify a light puzzle solution from browser miner"""
+	try:
+		nonce = solution.get('nonce')
+		target_hash = solution.get('hash')
+		difficulty = solution.get('difficulty', 3)
+		
+		# Verify hash format (simple check)
+		if not isinstance(target_hash, str) or len(target_hash) != 64:
+			return False
+		
+		# Verify hash starts with required zeros
+		if not target_hash.startswith('0' * difficulty):
+			return False
+		
+		# Verify nonce is reasonable
+		if not isinstance(nonce, int) or nonce < 0 or nonce > 2**32:
+			return False
+		
+		return True
+	except Exception:
+		return False
+
+def distribute_mining_rewards(block):
+	"""Distribute block rewards to mining pool members"""
+	with mining_lock:
+		total_shares = sum(user.get('shares', 0) for user in mining_pool.values())
+		if total_shares == 0:
+			return
+		
+		block_reward = blockchain.mining_reward
+		distributed = {}
+		
+		for address, user_data in mining_pool.items():
+			user_share = user_data.get('shares', 0) / total_shares
+			reward = user_share * block_reward
+			distributed[address] = reward
+			# Reset shares for next round
+			user_data['shares'] = 0
+		
+		print(f"[MINING POOL] Distributed {block_reward} Quantum to {len(distributed)} miners")
+		return distributed
+
+def mining_worker():
+	"""Background mining thread that serves the pool"""
+	global mining_active
+	mining_active = True
+	while mining_active:
+		try:
+			with mining_lock:
+				if not mining_pool or len(mining_pool) == 0:
+					time.sleep(5)
+					continue
+			
+			# Mine one block for the pool
+			print(f"[MINING] Mining block for pool ({len(mining_pool)} miners)...")
+			blockchain.mine_pending_transactions('MINING_POOL_REWARD')
+			
+			# Distribute rewards
+			latest_block = blockchain.get_latest_block()
+			distribute_mining_rewards(latest_block)
+			
+			time.sleep(10)  # Mine every 10 seconds
+			
+		except Exception as e:
+			print(f"[MINING ERROR] {e}")
+			time.sleep(5)
+
+# Start mining worker thread
+mining_thread = threading.Thread(target=mining_worker, daemon=True)
+mining_thread.start()
 
 # ============ Authentication endpoints ============
 
@@ -250,6 +329,117 @@ def api_send():
 @app.route('/api/register', methods=['GET'])
 def api_info():
     return jsonify({"note": "POST /api/register with username & password to create account"}), 200
+
+# ============ Mining Pool Endpoints ============
+
+@app.route('/api/mining/start', methods=['POST'])
+def start_mining():
+	"""User joins mining pool"""
+	data = request.get_json() or {}
+	address = data.get('address')
+	if not address:
+		return jsonify({"error": "address required"}), 400
+	
+	with mining_lock:
+		if address not in mining_pool:
+			mining_pool[address] = {'shares': 0, 'last_active': time.time(), 'hashrate': 0}
+		mining_pool[address]['last_active'] = time.time()
+	
+	return jsonify({
+		"message": f"Joined mining pool",
+		"address": address[:10] + "...",
+		"pool_size": len(mining_pool),
+		"estimated_reward": f"{blockchain.mining_reward} Quantum/block"
+	}), 200
+
+@app.route('/api/mining/stop', methods=['POST'])
+def stop_mining():
+	"""User leaves mining pool"""
+	data = request.get_json() or {}
+	address = data.get('address')
+	if not address:
+		return jsonify({"error": "address required"}), 400
+	
+	with mining_lock:
+		if address in mining_pool:
+			del mining_pool[address]
+	
+	return jsonify({"message": "Left mining pool"}), 200
+
+@app.route('/api/mining/submit-work', methods=['POST'])
+def submit_work():
+	"""User submits browser mining proof"""
+	data = request.get_json() or {}
+	address = data.get('address')
+	solution = data.get('solution')
+	if not address or not solution:
+		return jsonify({"error": "address and solution required"}), 400
+	
+	if not verify_light_puzzle(solution):
+		return jsonify({"success": False, "error": "Invalid solution"}), 400
+	
+	with mining_lock:
+		if address in mining_pool:
+			mining_pool[address]['shares'] = mining_pool[address].get('shares', 0) + 1
+			mining_pool[address]['last_active'] = time.time()
+			shares = mining_pool[address]['shares']
+		else:
+			return jsonify({"error": "Not in mining pool"}), 400
+	
+	return jsonify({
+		"success": True,
+		"message": "Work accepted!",
+		"shares": shares,
+		"total_pool_shares": sum(u.get('shares', 0) for u in mining_pool.values())
+	}), 200
+
+@app.route('/api/mining/stats', methods=['GET'])
+def mining_stats():
+	"""Get mining pool statistics"""
+	with mining_lock:
+		total_shares = sum(user.get('shares', 0) for user in mining_pool.values())
+		active_miners = [
+			{
+				'address': addr[:10] + '...',
+				'shares': data.get('shares', 0),
+				'share_percent': f"{(data.get('shares', 0) / total_shares * 100):.1f}%" if total_shares > 0 else "0%"
+			}
+			for addr, data in list(mining_pool.items())
+		]
+	
+	return jsonify({
+		'pool_size': len(mining_pool),
+		'total_shares': total_shares,
+		'active_miners': active_miners,
+		'current_block': len(blockchain.chain),
+		'block_reward': blockchain.mining_reward,
+		'next_block_in': '~10 seconds'
+	}), 200
+
+@app.route('/api/mining/user-stats', methods=['GET'])
+def user_mining_stats():
+	"""Get specific user's mining stats"""
+	address = request.args.get('address')
+	if not address:
+		return jsonify({"error": "address required"}), 400
+	
+	with mining_lock:
+		if address not in mining_pool:
+			return jsonify({"error": "Not mining"}), 404
+		
+		user_data = mining_pool[address]
+		total_shares = sum(u.get('shares', 0) for u in mining_pool.values())
+		user_shares = user_data.get('shares', 0)
+		user_percent = (user_shares / total_shares * 100) if total_shares > 0 else 0
+		estimated = (user_shares / total_shares * blockchain.mining_reward) if total_shares > 0 else 0
+	
+	return jsonify({
+		'address': address[:10] + '...',
+		'shares': user_shares,
+		'share_percentage': f'{user_percent:.2f}%',
+		'estimated_reward': f'{estimated:.2f} Quantum',
+		'active_seconds': int(time.time() - user_data.get('last_active', time.time()))
+	}), 200
 
 # Error handlers
 @app.errorhandler(404)
