@@ -107,7 +107,9 @@ def verify_light_puzzle(solution: dict) -> bool:
 
 def distribute_mining_rewards(block):
 	"""Distribute block rewards to mining pool members"""
-	with mining_lock:
+	# explicit lock use (avoid context-manager on older Python)
+	mining_lock.acquire()
+	try:
 		total_shares = sum(user.get('shares', 0) for user in mining_pool.values())
 		if total_shares == 0:
 			return
@@ -124,6 +126,8 @@ def distribute_mining_rewards(block):
 		
 		print(f"[MINING POOL] Distributed {block_reward} Quantum to {len(distributed)} miners")
 		return distributed
+	finally:
+		mining_lock.release()
 
 def mining_worker():
 	"""Background mining thread that serves the pool"""
@@ -131,20 +135,24 @@ def mining_worker():
 	mining_active = True
 	while mining_active:
 		try:
-			with mining_lock:
+			# explicit lock use
+			mining_lock.acquire()
+			try:
 				if not mining_pool or len(mining_pool) == 0:
-					time.sleep(5)
-					continue
+					# no miners, sleep and continue
+					pass
+				else:
+					# Mine one block for the pool
+					print(f"[MINING] Mining block for pool ({len(mining_pool)} miners)...")
+					blockchain.mine_pending_transactions('MINING_POOL_REWARD')
+					
+					# Distribute rewards
+					latest_block = blockchain.get_latest_block()
+					distribute_mining_rewards(latest_block)
+			finally:
+				mining_lock.release()
 			
-			# Mine one block for the pool
-			print(f"[MINING] Mining block for pool ({len(mining_pool)} miners)...")
-			blockchain.mine_pending_transactions('MINING_POOL_REWARD')
-			
-			# Distribute rewards
-			latest_block = blockchain.get_latest_block()
-			distribute_mining_rewards(latest_block)
-			
-			time.sleep(10)  # Mine every 10 seconds
+			time.sleep(10)  # Mine/check every 10 seconds
 			
 		except Exception as e:
 			print(f"[MINING ERROR] {e}")
@@ -340,10 +348,13 @@ def start_mining():
 	if not address:
 		return jsonify({"error": "address required"}), 400
 	
-	with mining_lock:
+	mining_lock.acquire()
+	try:
 		if address not in mining_pool:
 			mining_pool[address] = {'shares': 0, 'last_active': time.time(), 'hashrate': 0}
 		mining_pool[address]['last_active'] = time.time()
+	finally:
+		mining_lock.release()
 	
 	return jsonify({
 		"message": f"Joined mining pool",
@@ -360,9 +371,12 @@ def stop_mining():
 	if not address:
 		return jsonify({"error": "address required"}), 400
 	
-	with mining_lock:
+	mining_lock.acquire()
+	try:
 		if address in mining_pool:
 			del mining_pool[address]
+	finally:
+		mining_lock.release()
 	
 	return jsonify({"message": "Left mining pool"}), 200
 
@@ -378,13 +392,16 @@ def submit_work():
 	if not verify_light_puzzle(solution):
 		return jsonify({"success": False, "error": "Invalid solution"}), 400
 	
-	with mining_lock:
+	mining_lock.acquire()
+	try:
 		if address in mining_pool:
 			mining_pool[address]['shares'] = mining_pool[address].get('shares', 0) + 1
 			mining_pool[address]['last_active'] = time.time()
 			shares = mining_pool[address]['shares']
 		else:
 			return jsonify({"error": "Not in mining pool"}), 400
+	finally:
+		mining_lock.release()
 	
 	return jsonify({
 		"success": True,
@@ -396,7 +413,8 @@ def submit_work():
 @app.route('/api/mining/stats', methods=['GET'])
 def mining_stats():
 	"""Get mining pool statistics"""
-	with mining_lock:
+	mining_lock.acquire()
+	try:
 		total_shares = sum(user.get('shares', 0) for user in mining_pool.values())
 		active_miners = [
 			{
@@ -406,6 +424,8 @@ def mining_stats():
 			}
 			for addr, data in list(mining_pool.items())
 		]
+	finally:
+		mining_lock.release()
 	
 	return jsonify({
 		'pool_size': len(mining_pool),
@@ -423,7 +443,8 @@ def user_mining_stats():
 	if not address:
 		return jsonify({"error": "address required"}), 400
 	
-	with mining_lock:
+	mining_lock.acquire()
+	try:
 		if address not in mining_pool:
 			return jsonify({"error": "Not mining"}), 404
 		
@@ -432,6 +453,8 @@ def user_mining_stats():
 		user_shares = user_data.get('shares', 0)
 		user_percent = (user_shares / total_shares * 100) if total_shares > 0 else 0
 		estimated = (user_shares / total_shares * blockchain.mining_reward) if total_shares > 0 else 0
+	finally:
+		mining_lock.release()
 	
 	return jsonify({
 		'address': address[:10] + '...',
@@ -452,9 +475,12 @@ def api_mining_stats_compat():
 @app.route('/api/pool-info', methods=['GET'])
 def api_pool_info_compat():
     # brief pool summary expected by frontend
-    with mining_lock:
+    mining_lock.acquire()
+    try:
         total_shares = sum(u.get('shares', 0) for u in mining_pool.values())
         members = [{'address': addr, 'shares': data.get('shares', 0)} for addr, data in mining_pool.items()]
+    finally:
+        mining_lock.release()
     return jsonify({
         'pool_size': len(mining_pool),
         'total_shares': total_shares,
@@ -471,10 +497,13 @@ def api_mining_start_compat():
     if not address:
         return jsonify({"error": "address required"}), 400
 
-    with mining_lock:
+    mining_lock.acquire()
+    try:
         if address not in mining_pool:
             mining_pool[address] = {'shares': 0, 'last_active': time.time(), 'hashrate': 0}
         mining_pool[address]['last_active'] = time.time()
+    finally:
+        mining_lock.release()
 
     return jsonify({
         'message': f'Joined mining pool',
