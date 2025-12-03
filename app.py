@@ -381,9 +381,10 @@ def start_mining():
 	except Exception:
 		return jsonify({"error": "invalid JSON body"}), 400
 	
-	address = data.get('address', '').strip()
+	# Accept both 'address' and 'walletAddress' (frontend compat)
+	address = (data.get('address') or data.get('walletAddress') or '').strip()
 	if not address:
-		return jsonify({"error": "address required"}), 400
+		return jsonify({"error": "address or walletAddress required"}), 400
 	
 	mining_lock.acquire()
 	try:
@@ -408,9 +409,10 @@ def stop_mining():
 	except Exception:
 		return jsonify({"error": "invalid JSON body"}), 400
 	
-	address = data.get('address', '').strip()
+	# Accept both 'address' and 'walletAddress' (frontend compat)
+	address = (data.get('address') or data.get('walletAddress') or '').strip()
 	if not address:
-		return jsonify({"error": "address required"}), 400
+		return jsonify({"error": "address or walletAddress required"}), 400
 	
 	mining_lock.acquire()
 	try:
@@ -429,10 +431,11 @@ def submit_work():
 	except Exception:
 		return jsonify({"error": "invalid JSON body"}), 400
 	
-	address = data.get('address', '').strip()
+	# Accept both 'address' and 'walletAddress' (frontend compat)
+	address = (data.get('address') or data.get('walletAddress') or '').strip()
 	solution = data.get('solution')
 	if not address or not solution:
-		return jsonify({"error": "address and solution required"}), 400
+		return jsonify({"error": "address/walletAddress and solution required"}), 400
 	
 	if not verify_light_puzzle(solution):
 		return jsonify({"success": False, "error": "Invalid solution"}), 400
@@ -536,14 +539,16 @@ def api_pool_info_compat():
 
 @app.route('/api/mining-start', methods=['POST'])
 def api_mining_start_compat():
+    """Legacy endpoint (accepts walletAddress from frontend)"""
     try:
         data = request.get_json(silent=True) or {}
     except Exception:
         return jsonify({"error": "invalid JSON body"}), 400
-    
-    address = data.get('address', '').strip()
+
+    # Accept both 'address' and 'walletAddress' (frontend compat)
+    address = (data.get('address') or data.get('walletAddress') or '').strip()
     if not address:
-        return jsonify({"error": "address required"}), 400
+        return jsonify({"error": "address or walletAddress required"}), 400
 
     mining_lock.acquire()
     try:
