@@ -441,6 +441,48 @@ def user_mining_stats():
 		'active_seconds': int(time.time() - user_data.get('last_active', time.time()))
 	}), 200
 
+# ============ Compatibility endpoints for frontend ============
+# These map old frontend paths to the current mining endpoints.
+
+@app.route('/api/mining-stats', methods=['GET'])
+def api_mining_stats_compat():
+    # reuse existing mining_stats logic
+    return mining_stats()
+
+@app.route('/api/pool-info', methods=['GET'])
+def api_pool_info_compat():
+    # brief pool summary expected by frontend
+    with mining_lock:
+        total_shares = sum(u.get('shares', 0) for u in mining_pool.values())
+        members = [{'address': addr, 'shares': data.get('shares', 0)} for addr, data in mining_pool.items()]
+    return jsonify({
+        'pool_size': len(mining_pool),
+        'total_shares': total_shares,
+        'members': members,
+        'current_block': len(blockchain.chain),
+        'block_reward': blockchain.mining_reward
+    }), 200
+
+@app.route('/api/mining-start', methods=['POST'])
+def api_mining_start_compat():
+    # same behavior as /api/mining/start but with legacy path
+    data = request.get_json() or {}
+    address = data.get('address')
+    if not address:
+        return jsonify({"error": "address required"}), 400
+
+    with mining_lock:
+        if address not in mining_pool:
+            mining_pool[address] = {'shares': 0, 'last_active': time.time(), 'hashrate': 0}
+        mining_pool[address]['last_active'] = time.time()
+
+    return jsonify({
+        'message': f'Joined mining pool',
+        'address': address[:10] + '...',
+        'pool_size': len(mining_pool),
+        'estimated_reward': f"{blockchain.mining_reward} Quantum/block"
+    }), 200
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(err):
