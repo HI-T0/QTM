@@ -68,6 +68,25 @@ def get_username_from_token(token: str):
 app = Flask(__name__)
 CORS(app)
 
+# Add global CORS handling so frontend preflight/requests always receive headers
+@app.before_request
+def _handle_options_preflight():
+	# Respond to OPTIONS preflight quickly (prevents 404 for unknown OPTIONS)
+	if request.method == 'OPTIONS':
+		resp = app.make_response(('', 200))
+		resp.headers['Access-Control-Allow-Origin'] = '*'
+		resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+		resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+		return resp
+
+@app.after_request
+def _add_cors_headers(response):
+	# Ensure CORS headers present on every response
+	response.headers.setdefault('Access-Control-Allow-Origin', '*')
+	response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+	response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+	return response
+
 # Initialize blockchain and node
 blockchain = Blockchain(storage_path=storage_path)
 # create a master CLI wallet only if needed
